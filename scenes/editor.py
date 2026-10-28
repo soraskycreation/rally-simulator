@@ -18,7 +18,7 @@ class TrackEditor:
         self.banner_row = 15
         self.sheet = Spritesheet('assets/rally_track.png')
         
-        raw_grid, self.track_name = load_slot(self.slot_id, default_rows=self.rows, default_cols=self.cols)
+        raw_grid, self.track_name, _ = load_slot(self.slot_id, default_rows=self.rows, default_cols=self.cols)
         self.grid = self._normalize_grid(raw_grid)
         
         self.original_grid = copy.deepcopy(self.grid)

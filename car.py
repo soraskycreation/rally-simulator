@@ -8,28 +8,43 @@ class Car:
         self.angle = 0.0  # Degrees (0 = Facing Right)
         
         # Physics Parameters (Arcade physics baseline)
-        self.acceleration = 0.2
-        self.max_speed = 6.0
+        self.acceleration = 0.4
+        self.max_speed = 10.0
         self.friction = 0.97
         self.turn_speed = 3.8
         
-        self.width = 32
-        self.height = 16
+        # --- CAR SIZE & HITBOX CONFIGURATION ---
+        self.scale_factor = 2  # Scale factor for visual representation
+        self.width = 32   # Increased visual size (was 32)
+        self.height = 16  # Increased visual size (was 16)
+        self.width *= self.scale_factor
+        self.height *= self.scale_factor
+
+        
+        # Hitbox padding factor (0.85 = 85% of visual size for generous collision detection)
+        self.hitbox_scale = 0.85
+        # ----------------------------------------
+
         self.is_alive = True
         self.fitness = 0.0
         
-        # Crop to the top-left 32x16 region if a larger sheet is passed
+        # Load and scale sprite to visual dimensions
         if sprite_surface:
-            if sprite_surface.get_width() > self.width or sprite_surface.get_height() > self.height:
-                self.raw_sprite = sprite_surface.subsurface(pygame.Rect(0, 0, self.width, self.height))
+            if sprite_surface.get_width() > 32 or sprite_surface.get_height() > 16:
+                cropped = sprite_surface.subsurface(pygame.Rect(0, 0, 32, 16))
             else:
-                self.raw_sprite = sprite_surface
+                cropped = sprite_surface
+            self.raw_sprite = pygame.transform.smoothscale(cropped, (self.width, self.height))
         else:
             self.raw_sprite = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-            pygame.draw.rect(self.raw_sprite, (0, 180, 255), (0, 0, self.width, self.height), border_radius=3)
+            pygame.draw.rect(self.raw_sprite, (0, 180, 255), (0, 0, self.width, self.height), border_radius=4)
 
-        # Pre-create base mask for pixel-perfect collisions
-        self.base_mask = pygame.mask.from_surface(self.raw_sprite)
+        # Create base collision mask scaled down from the visual sprite
+        hb_w = max(1, int(self.width * self.hitbox_scale))
+        hb_h = max(1, int(self.height * self.hitbox_scale))
+        hitbox_surface = pygame.transform.smoothscale(self.raw_sprite, (hb_w, hb_h))
+        self.base_mask = pygame.mask.from_surface(hitbox_surface)
+        
         self.current_mask = self.base_mask
         self.rect = self.raw_sprite.get_rect(center=(self.pos.x, self.pos.y))
         
@@ -62,14 +77,22 @@ class Car:
         self.pos += self.vel
         self.fitness += speed
 
-        # Update Rotated Surface & Mask
+        # Update Visual Rect
         rotated_surf = pygame.transform.rotate(self.raw_sprite, -self.angle)
-        self.current_mask = pygame.mask.from_surface(rotated_surf)
         self.rect = rotated_surf.get_rect(center=(self.pos.x, self.pos.y))
 
+        # Update Rotated Hitbox Mask
+        hb_w = max(1, int(self.width * self.hitbox_scale))
+        hb_h = max(1, int(self.height * self.hitbox_scale))
+        scaled_sprite = pygame.transform.smoothscale(self.raw_sprite, (hb_w, hb_h))
+        rotated_hitbox = pygame.transform.rotate(scaled_sprite, -self.angle)
+        self.current_mask = pygame.mask.from_surface(rotated_hitbox)
+
     def check_track_collision(self, track_mask, offset_x=0, offset_y=0):
-        """Checks pixel-perfect overlap between car mask and off-track mask."""
-        mask_offset = (int(self.rect.x - offset_x), int(self.rect.y - offset_y))
+        """Checks pixel-perfect overlap between the smaller car mask and off-track mask."""
+        # Align smaller mask center with the car's current center
+        mask_rect = self.current_mask.get_rect(center=(self.pos.x, self.pos.y))
+        mask_offset = (int(mask_rect.x - offset_x), int(mask_rect.y - offset_y))
         
         if track_mask.overlap(self.current_mask, mask_offset):
             self.is_alive = False

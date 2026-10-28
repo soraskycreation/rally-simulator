@@ -59,23 +59,28 @@ def load_slot(slot_id, default_rows=14, default_cols=24):
             slot_data = data.get(str(slot_id), {})
             grid = slot_data.get("grid", [])
             name = slot_data.get("name", f"Track {slot_id}")
+            fastest_time = slot_data.get("fastest_time", None)
             
             if not grid:
                 grid = [[None] * default_cols for _ in range(default_rows)]
-            return grid, name
+            return grid, name, fastest_time
     except Exception:
-        return [[None] * default_cols for _ in range(default_rows)], f"Track {slot_id}"
+        return [[None] * default_cols for _ in range(default_rows)], f"Track {slot_id}", None
 
-def save_slot(slot_id, grid, name=None):
+def save_slot(slot_id, grid, name=None, fastest_time=None):
     ensure_file_exists()
     all_data = get_all_slots()
     existing_data = all_data.get(str(slot_id), {})
     track_name = name.strip() if name and name.strip() else existing_data.get("name", f"Track {slot_id}")
     
+    # If fastest_time is explicitly passed as None (or a value), use it. 
+    # Otherwise, fall back to the existing saved fastest_time.
+    final_fastest_time = fastest_time if fastest_time is not None else existing_data.get("fastest_time", None)
+
     all_data[str(slot_id)] = {
         "name": track_name,
         "grid": grid,
-        "fastest_time": existing_data.get("fastest_time", None)
+        "fastest_time": final_fastest_time
     }
     
     with open(TRACKS_FILE, 'w') as f:

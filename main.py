@@ -66,7 +66,7 @@ while running:
     # Render Active Scene
     current_scene.draw()
     pygame.display.flip()
-    clock.tick(60)
+    clock.tick(30)
 
 pygame.quit()
 sys.exit()
